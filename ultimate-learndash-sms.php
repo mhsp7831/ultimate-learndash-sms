@@ -6,6 +6,8 @@ Version: 1.2.0
 Author: MHSP :)
 Author URI: https://github.com/mhsp7831
 Text Domain: uls-sms
+* Credits:
+Original Author: صادق کاهانی 09109526082
 */
 
 if ( ! defined( 'ABSPATH' ) ) {
