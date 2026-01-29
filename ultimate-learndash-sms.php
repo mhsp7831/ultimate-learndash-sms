@@ -3,7 +3,7 @@
 Plugin Name: Ultimate LearnDash SMS (Kahani)
 Plugin URI: https://your-site.com
 Description: یک افزونه جامع برای ارسال پیامک در مراحل مختلف لرن‌دش (ثبت‌نام، ثبت‌نام دوره، تکمیل درس، تکمیل دوره) با قابلیت ارسال هوشمند (ایتا، دینگ، پیامک).
-Version: 1.0.0
+Version: 1.1.0
 Author: صادق کاهانی
 Author URI: https://your-site.com
 Text Domain: uls-sms
@@ -19,11 +19,6 @@ class Kahani_Ultimate_SMS {
     private $opt_general = 'uls_general_settings';
     private $opt_phones = 'uls_phone_numbers';
     private $opt_reg = 'uls_registration_settings';
-
-    // برای ذخیره تنظیمات دوره‌ها و درس‌ها از پیشوند استفاده می‌کنیم
-    // uls_course_enroll_{id}
-    // uls_course_complete_{id}
-    // uls_lesson_{cid}_{lid}
 
     private static $instance = null;
 
@@ -85,15 +80,28 @@ class Kahani_Ultimate_SMS {
                 .uls-btn { cursor: pointer; }
                 .uls-del-btn { background: #dc3232; color: #fff; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
                 .uls-log-box { background: #222; color: #0f0; padding: 10px; height: 200px; overflow-y: scroll; direction: ltr; text-align: left; font-family: monospace; }
+
+                /* استایل شمارنده کاراکتر */
+                .uls-char-count {
+                    font-size: 12px;
+                    color: #777;
+                    margin-top: 5px;
+                    text-align: left; /* نمایش در سمت چپ زیر فیلد */
+                    width: 100%;
+                    max-width: 500px; /* هم‌عرض با تکست‌اریا */
+                    font-family: Tahoma, sans-serif;
+                }
             </style>
             <?php
         } );
 
-        // اسکریپت‌های ادمین (JS Inline) برای AJAX درس‌ها
+        // اسکریپت‌های ادمین (JS Inline) برای AJAX درس‌ها + شمارنده کاراکتر
         add_action( 'admin_footer', function () {
             ?>
             <script>
                 jQuery(document).ready(function($) {
+
+                    // --- AJAX for Lessons Dropdown ---
                     $('#uls_selected_course').change(function() {
                         var course_id = $(this).val();
                         $('#uls_selected_lesson').empty().append('<option value="">در حال بارگذاری...</option>').prop('disabled', true);
@@ -117,6 +125,39 @@ class Kahani_Ultimate_SMS {
                             }
                         });
                     });
+
+                    // --- Real-time Character Counter ---
+
+                    // تابع ایجاد یا بروزرسانی شمارنده
+                    function updateCharCount(textarea) {
+                        var $el = $(textarea);
+                        var count = $el.val().length;
+                        var $counter = $el.next('.uls-char-count');
+
+                        // اگر المان شمارنده وجود نداشت، بساز
+                        if ($counter.length === 0) {
+                            $el.after('<div class="uls-char-count"></div>');
+                            $counter = $el.next('.uls-char-count');
+                        }
+
+                        $counter.text('تعداد کاراکتر: ' + count);
+                    }
+
+                    // 1. اعمال روی تمام تکست‌اریاهای موجود هنگام لود صفحه
+                    $('.uls-wrap textarea').each(function() {
+                        updateCharCount(this);
+                    });
+
+                    // 2. بروزرسانی هنگام تایپ (Input Event)
+                    $(document).on('input', '.uls-wrap textarea', function() {
+                        updateCharCount(this);
+                    });
+
+                    // 3. اطمینان از ایجاد شمارنده برای المان‌های جدید (هنگام فوکوس)
+                    $(document).on('focus', '.uls-wrap textarea', function() {
+                        updateCharCount(this);
+                    });
+
                 });
             </script>
             <?php
@@ -314,9 +355,7 @@ class Kahani_Ultimate_SMS {
         <div class="uls-form-row">
             <label>متن پیامک:</label>
             <textarea name="reg_message" rows="5"><?php echo esc_textarea( $reg['message'] ?? '' ); ?></textarea>
-            <div class="notice notice-warning inline">
-                <p class="description">نام کاربری و رمز عبور به صورت خودکار در انتهای پیام اضافه خواهند شد.</p>
-            </div>
+            <p class="description">نام کاربری و رمز عبور به صورت خودکار در انتهای پیام اضافه خواهند شد.</p>
         </div>
         <div class="uls-form-row">
             <label>شماره فرستنده:</label>
