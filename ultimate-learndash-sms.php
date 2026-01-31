@@ -2,7 +2,7 @@
 /*
 Plugin Name: Ultimate LearnDash SMS
 Description: افزونه جامع پیامک لرن‌دش با قابلیت متن دوگانه (پیامک عادی و پیامک هوشمند) و پشتیبانی از ایتا و دینگ.
-Version: 1.2.0
+Version: 1.2.1
 Author: MHSP :)
 Author URI: https://github.com/mhsp7831
 Text Domain: uls-sms
@@ -42,6 +42,10 @@ class Kahani_Ultimate_SMS
 
         // هوک‌های منطقی (Triggers)
         add_action('user_register', array($this, 'handle_registration'));
+
+        // هوک جدید برای ارسال با تاخیر
+        add_action('uls_send_welcome_sms_delayed', array($this, 'process_delayed_registration_sms'), 10, 2);
+
         add_action('learndash_update_course_access', array($this, 'handle_enrollment'), 10, 4);
         add_action('learndash_lesson_completed', array($this, 'handle_lesson_completion'), 10, 1);
         add_action('learndash_course_completed', array($this, 'handle_course_completion'), 10, 1);
@@ -488,7 +492,8 @@ class Kahani_Ultimate_SMS
                     'message' => sanitize_textarea_field($_POST['reg_message']),
                     'smart_send' => isset($_POST['reg_smart']) ? 1 : 0,
                     'smart_message' => sanitize_textarea_field($_POST['reg_smart_message']),
-                    'from' => sanitize_text_field($_POST['reg_from'])
+                    'from' => sanitize_text_field($_POST['reg_from']),
+                    'block_app_users' => isset($_POST['reg_block_app_users']) ? 1 : 0
             );
             update_option($this->opt_reg, $data);
             echo '<div class="updated"><p>تنظیمات ثبت‌نام ذخیره شد.</p></div>';
@@ -498,11 +503,21 @@ class Kahani_Ultimate_SMS
         $general = get_option($this->opt_general, array());
         ?>
         <h3>تنظیمات پیامک عضویت کاربر جدید</h3>
-        <p>پیام عضویت <span style="color: red">نمی تواند</span> از طریق برنامک ارسال شود.</p>
+        <p>پیام عضویت <span style="color: #d63638">نمی تواند</span> از طریق برنامک ارسال شود.</p>
         <div class="uls-section-wrap">
             <div class="uls-form-row"><label><input type="checkbox" name="reg_active"
                                                     value="1" <?php checked(1, $reg['active'] ?? 0); ?>> فعال‌سازی
                     ارسال پیامک هنگام عضویت</label></div>
+
+            <div class="uls-form-row">
+                <label>
+                    <input type="checkbox" name="reg_block_app_users" value="1" <?php checked(1, $reg['block_app_users'] ?? 0); ?>>
+                    به کاربرانی که از طریق برنامک عضو می‌شوند پیام ارسال نکن
+                </label>
+                <p class="description" style="color: #d63638; margin-top: 5px;">
+                    توجه: برای اطمینان از تشخیص صحیح کاربران اپلیکیشن، پیامک‌های خوش‌آمدگویی با <b>۱ دقیقه تاخیر</b> ارسال می‌شوند.
+                </p>
+            </div>
 
             <div class="uls-form-row">
                 <label>متن پیامک عادی (SMS Message):</label>
@@ -875,28 +890,62 @@ class Kahani_Ultimate_SMS
     // تریگرها (Event Handlers) - آپدیت شده برای ارسال دو متن
     // ------------------------------------------------------------------------------------------------
 
+// 1. Scheduler Function (Runs on user_register)
     public function handle_registration($user_id)
     {
         $reg_opt = get_option($this->opt_reg, array());
+
+        // اگر سیستم غیرفعال است، خروج
         if (!isset($reg_opt['active']) || $reg_opt['active'] != 1) {
             return;
         }
 
+        $this->log("Registration Detected for User ID: $user_id. Scheduling SMS with 60s delay.");
+
+        // تنظیم رویداد یک‌بار مصرف برای 60 ثانیه بعد
+        wp_schedule_single_event(time() + 60, 'uls_send_welcome_sms_delayed', array($user_id));
+    }
+
+    // 2. Processor Function (Runs via WP Cron)
+    public function process_delayed_registration_sms($user_id)
+    {
+        $reg_opt = get_option($this->opt_reg, array());
+
+        // بررسی مجدد فعال بودن
+        if (!isset($reg_opt['active']) || $reg_opt['active'] != 1) {
+            return;
+        }
+
+        // --- Logic: Block App Users (Delayed Check) ---
+        if ( isset($reg_opt['block_app_users']) && $reg_opt['block_app_users'] == 1 ) {
+            // اکنون 1 دقیقه گذشته و اگر کاربر اپلیکیشن باشد، متای مربوطه ست شده است
+            $is_connected = get_user_meta( $user_id, 'is_eitaa_connected', true );
+
+            if ( $is_connected ) {
+                $this->log( "Delayed Check: App User detected (ID: $user_id). SMS Blocked." );
+                return; // خروج: پیامک ارسال نمی‌شود
+            }
+        }
+
         $user_info = get_userdata($user_id);
+        if (!$user_info) {
+            $this->log("Error: User ID $user_id not found during delayed processing.");
+            return;
+        }
+
         $mobile = trim($user_info->user_login);
 
         // ساخت متن عادی
         $reg_msg = $reg_opt['message'] ?? '';
+
+        // فقط نام کاربری به انتهای پیام اضافه می‌شود
         $final_reg_msg = $reg_msg . "\n\nنام کاربری: " . $mobile;
 
         // ساخت متن هوشمند
         $smart_raw = $reg_opt['smart_message'] ?? '';
-        // اگر متن هوشمند هم نیاز به یوزر/پسورد دارد، می‌توان اینجا اضافه کرد. فعلا همان متن خام ارسال می‌شود.
-        // اگر کاربر بخواهد یوزر/پسورد در متن هوشمند باشد باید خودش بنویسد یا ما اضافه کنیم؟
-        // معمولا برای ایتا امنیت بالاتر است، پس یوزر/پسورد را به متن هوشمند هم اضافه می‌کنیم.
         $final_smart_msg = !empty($smart_raw) ? ($smart_raw . "\n\nنام کاربری: " . $mobile) : '';
 
-        $this->log("Event: Registration - User: $mobile");
+        $this->log("Processing Delayed Registration SMS for User: $mobile");
 
         $this->send_notification(
                 $mobile,
