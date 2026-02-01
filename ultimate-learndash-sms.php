@@ -2,7 +2,7 @@
 /*
 Plugin Name: Ultimate LearnDash SMS
 Description: افزونه جامع پیامک لرن‌دش با قابلیت متن دوگانه (پیامک عادی و پیامک هوشمند) و پشتیبانی از ایتا و دینگ.
-Version: 1.2.1
+Version: 1.3.0
 Author: MHSP :)
 Author URI: https://github.com/mhsp7831
 Text Domain: uls-sms
@@ -44,7 +44,7 @@ class Kahani_Ultimate_SMS
         add_action('user_register', array($this, 'handle_registration'));
 
         // هوک جدید برای ارسال با تاخیر
-        add_action('uls_send_welcome_sms_delayed', array($this, 'process_delayed_registration_sms'), 10, 2);
+        add_action('uls_send_welcome_sms_delayed', array($this, 'process_delayed_registration_sms'), 10, 1);
 
         add_action('learndash_update_course_access', array($this, 'handle_enrollment'), 10, 4);
         add_action('learndash_lesson_completed', array($this, 'handle_lesson_completion'), 10, 1);
@@ -147,7 +147,6 @@ class Kahani_Ultimate_SMS
                     max-width: 500px;
                 }
 
-                /* Padding left to prevent text overlapping the icon in RTL */
                 .uls-password-wrapper input {
                     padding-left: 35px !important;
                 }
@@ -155,7 +154,7 @@ class Kahani_Ultimate_SMS
                 .uls-toggle-pass {
                     position: absolute;
                     top: 50%;
-                    left: 10px; /* Position on the left for RTL inputs */
+                    left: 10px;
                     transform: translateY(-50%);
                     cursor: pointer;
                     color: #888;
@@ -166,7 +165,6 @@ class Kahani_Ultimate_SMS
                     color: #2271b1;
                 }
 
-                /* Rest of styles... */
                 .uls-card {
                     background: #f9f9f9;
                     border: 1px solid #e5e5e5;
@@ -545,7 +543,11 @@ class Kahani_Ultimate_SMS
             <div class="uls-form-row">
                 <label>متن پیامک عادی (SMS Message):</label>
                 <textarea name="reg_message" rows="5"><?php echo esc_textarea($reg['message'] ?? ''); ?></textarea>
-                <p class="description">نام کاربری به صورت خودکار به انتهای پیام اضافه میشود. <span style="color: red">(25 کاراکتر)</span>
+                <p class="description">
+                    نام کاربری به صورت خودکار به انتهای پیام اضافه میشود. <span
+                            style="color: #d63638">(25 کاراکتر)</span><br>
+                    شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام
+                    خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).
                 </p>
             </div>
 
@@ -571,7 +573,11 @@ class Kahani_Ultimate_SMS
                     <label class="uls-smart-label">متن هوشمند (این متن فقط در ایتا/دینگ استفاده میشود):</label>
                     <textarea name="reg_smart_message" rows="5"
                               placeholder="متن مخصوص ایتا/دینگ..."><?php echo esc_textarea($reg['smart_message'] ?? ''); ?></textarea>
-                    <p class="description">نام کاربری به صورت خودکار به انتهای پیام اضافه میشود. (25 کاراکتر)</p>
+                    <p class="description">
+                        نام کاربری به صورت خودکار به انتهای پیام اضافه میشود. (25 کاراکتر)<br>
+                        شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام
+                        خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).
+                    </p>
                 </div>
             </div>
         </div>
@@ -625,7 +631,8 @@ class Kahani_Ultimate_SMS
             echo "<h4>" . esc_html($course->post_title) . "</h4>";
             echo "<div class='uls-form-row'><label><input type='checkbox' name='courses[$course->ID][active]' value='1' " . checked(1, $opt['active'] ?? 0, false) . "> فعال‌سازی</label></div>";
 
-            echo "<div class='uls-form-row'><label>متن پیامک عادی:</label><textarea name='courses[$course->ID][message]' rows='3'>" . esc_textarea($opt['message'] ?? '') . "</textarea></div>";
+            echo "<div class='uls-form-row'><label>متن پیامک عادی:</label><textarea name='courses[$course->ID][message]' rows='3'>" . esc_textarea($opt['message'] ?? '') . "</textarea>";
+            echo "<p class='description'>شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p></div>";
 
             echo "<div class='uls-form-row'><label>شماره:</label><select name='courses[$course->ID][from]'><option value=''>پیش‌فرض</option>";
             foreach ($phones as $p) {
@@ -636,7 +643,8 @@ class Kahani_Ultimate_SMS
             echo "<div class='uls-form-row'><label class='uls-checkbox-label'><input type='checkbox' name='courses[$course->ID][smart]' class='uls-smart-toggle' value='1' " . checked(1, $opt['smart'] ?? 0, false) . "> ارسال هوشمند (برنامک -> دینگ -> پیامک)</label></div>";
 
             // متن هوشمند (مخفی)
-            echo "<div class='uls-smart-row'><div class='uls-form-row'><label class='uls-smart-label'>متن هوشمند (این متن فقط در ایتا/دینگ استفاده میشود):</label><textarea name='courses[$course->ID][smart_message]' rows='3'>" . esc_textarea($opt['smart_message'] ?? '') . "</textarea></div></div>";
+            echo "<div class='uls-smart-row'><div class='uls-form-row'><label class='uls-smart-label'>متن هوشمند (این متن فقط در ایتا/دینگ استفاده میشود):</label><textarea name='courses[$course->ID][smart_message]' rows='3'>" . esc_textarea($opt['smart_message'] ?? '') . "</textarea>";
+            echo "<p class='description'>شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p></div></div>";
 
             echo "</div>";
         }
@@ -711,6 +719,8 @@ class Kahani_Ultimate_SMS
             <div class="uls-form-row">
                 <label>متن پیامک عادی:</label>
                 <textarea name="new_lesson_message" rows="3"></textarea>
+                <p class="description">شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)،
+                    <code>{{last_name}}</code> (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p>
             </div>
 
             <div class="uls-form-row">
@@ -742,6 +752,8 @@ class Kahani_Ultimate_SMS
                 <div class="uls-form-row">
                     <label class="uls-smart-label">متن هوشمند:</label>
                     <textarea name="new_lesson_smart_message" rows="3"></textarea>
+                    <p class="description">شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code>
+                        (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p>
                 </div>
             </div>
 
@@ -774,7 +786,8 @@ class Kahani_Ultimate_SMS
                     echo "<h4>{$course->post_title} > {$lesson->post_title}</h4>";
 
                     // Textarea Regular
-                    echo "<div class='uls-form-row'><label>عادی:</label><textarea name='lessons[{$course->ID}_{$lesson->ID}][message]'>" . esc_textarea($opt['message']) . "</textarea></div>";
+                    echo "<div class='uls-form-row'><label>عادی:</label><textarea name='lessons[{$course->ID}_{$lesson->ID}][message]'>" . esc_textarea($opt['message']) . "</textarea>";
+                    echo "<p class='description'>شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p></div>";
 
                     // Select From (Existing Logic for List Items)
                     echo "<div class='uls-form-row'><select name='lessons[{$course->ID}_{$lesson->ID}][from]'><option value=''>پیش‌فرض</option>";
@@ -785,7 +798,8 @@ class Kahani_Ultimate_SMS
 
                     // Smart Toggle & Message
                     echo "<div class='uls-form-row'><label class='uls-checkbox-label'><input type='checkbox' name='lessons[{$course->ID}_{$lesson->ID}][smart]' class='uls-smart-toggle' value='1' " . checked(1, $opt['smart'] ?? 0, false) . "> ارسال هوشمند (برنامک -> دینگ -> پیامک)</label></div>";
-                    echo "<div class='uls-smart-row'><div class='uls-form-row'><label class='uls-smart-label'>متن هوشمند (این متن فقط در ایتا/دینگ استفاده میشود):</label><textarea name='lessons[{$course->ID}_{$lesson->ID}][smart_message]'>" . esc_textarea($opt['smart_message'] ?? '') . "</textarea></div></div>";
+                    echo "<div class='uls-smart-row'><div class='uls-form-row'><label class='uls-smart-label'>متن هوشمند (این متن فقط در ایتا/دینگ استفاده میشود):</label><textarea name='lessons[{$course->ID}_{$lesson->ID}][smart_message]'>" . esc_textarea($opt['smart_message'] ?? '') . "</textarea>";
+                    echo "<p class='description'>شورت‌کدهای قابل استفاده: <code>{{first_name}}</code> (نام)، <code>{{last_name}}</code> (نام خانوادگی)، <code>{{mobile}}</code> (شماره موبایل).</p></div></div>";
 
                     echo "<div style='margin-top:10px;'><label style='color:red;'><input type='checkbox' name='lessons[{$course->ID}_{$lesson->ID}][delete]' value='1'> حذف این پیام</label></div>";
                     echo "</div>";
@@ -913,7 +927,7 @@ class Kahani_Ultimate_SMS
     // تریگرها (Event Handlers) - آپدیت شده برای ارسال دو متن
     // ------------------------------------------------------------------------------------------------
 
-// 1. Scheduler Function (Runs on user_register)
+    // 1. Scheduler Function (Runs on user_register)
     public function handle_registration($user_id)
     {
         $reg_opt = get_option($this->opt_reg, array());
@@ -960,12 +974,14 @@ class Kahani_Ultimate_SMS
 
         // ساخت متن عادی
         $reg_msg = $reg_opt['message'] ?? '';
+        $reg_msg = $this->apply_placeholders($reg_msg, $user_id);
 
         // فقط نام کاربری به انتهای پیام اضافه می‌شود
         $final_reg_msg = $reg_msg . "\n\nنام کاربری: " . $mobile;
 
         // ساخت متن هوشمند
         $smart_raw = $reg_opt['smart_message'] ?? '';
+        $smart_raw = $this->apply_placeholders($smart_raw, $user_id);
         $final_smart_msg = !empty($smart_raw) ? ($smart_raw . "\n\nنام کاربری: " . $mobile) : '';
 
         $this->log("Processing Delayed Registration SMS for User: $mobile");
@@ -996,10 +1012,16 @@ class Kahani_Ultimate_SMS
         $mobile = trim($user_info->user_login);
         $this->log("Event: Enrollment - User: $mobile, Course: $course_id");
 
+        $regular_msg = $opt['message'];
+        $regular_msg = $this->apply_placeholders($regular_msg, $user_id);
+
+        $smart_msg = $opt['smart_message'] ?? '';
+        $smart_msg = $this->apply_placeholders($smart_msg, $user_id);
+
         $this->send_notification(
                 $mobile,
-                $opt['message'], // SMS
-                $opt['smart_message'] ?? '', // Smart
+                $regular_msg, // SMS
+                $smart_msg, // Smart
                 (isset($opt['smart']) && $opt['smart'] == 1),
                 $opt['from'] ?? ''
         );
@@ -1021,10 +1043,16 @@ class Kahani_Ultimate_SMS
         $mobile = trim($user_info->user_login);
         $this->log("Event: Course Complete - User: $mobile, Course: $course_id");
 
+        $regular_msg = $opt['message'];
+        $regular_msg = $this->apply_placeholders($regular_msg, $user_id);
+
+        $smart_msg = $opt['smart_message'] ?? '';
+        $smart_msg = $this->apply_placeholders($smart_msg, $user_id);
+
         $this->send_notification(
                 $mobile,
-                $opt['message'],
-                $opt['smart_message'] ?? '',
+                $regular_msg,
+                $smart_msg,
                 (isset($opt['smart']) && $opt['smart'] == 1),
                 $opt['from'] ?? ''
         );
@@ -1053,13 +1081,34 @@ class Kahani_Ultimate_SMS
         $mobile = trim($user_info->user_login);
         $this->log("Event: Lesson Complete - User: $mobile, Lesson: $lesson_id");
 
+        $regular_msg = $opt['message'];
+        $regular_msg = $this->apply_placeholders($regular_msg, $user_id);
+
+        $smart_msg = $opt['smart_message'] ?? '';
+        $smart_msg = $this->apply_placeholders($smart_msg, $user_id);
+
         $this->send_notification(
                 $mobile,
-                $opt['message'],
-                $opt['smart_message'] ?? '',
+                $regular_msg,
+                $smart_msg,
                 (isset($opt['smart']) && $opt['smart'] == 1),
                 $opt['from'] ?? ''
         );
+    }
+
+    private function apply_placeholders($message, $user_id)
+    {
+        if (empty($message)) return '';
+        $user_info = get_userdata($user_id);
+        if (!$user_info) return $message;
+
+        $replacements = array(
+                '{{first_name}}' => $user_info->first_name,
+                '{{last_name}}' => $user_info->last_name,
+                '{{mobile}}' => $user_info->user_login,
+        );
+
+        return str_replace(array_keys($replacements), array_values($replacements), $message);
     }
 
     private function log($message)
