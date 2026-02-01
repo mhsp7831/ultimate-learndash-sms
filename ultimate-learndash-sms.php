@@ -399,9 +399,7 @@ class Kahani_Ultimate_SMS
                     'default_from' => sanitize_text_field($_POST['default_from']),
             );
             update_option($this->opt_general, $data);
-            if (isset($_POST['clear_log'])) {
-                file_put_contents(plugin_dir_path(__FILE__) . 'debug_log.txt', '');
-            }
+
             echo '<div class="updated"><p>تنظیمات کلی ذخیره شد.</p></div>';
         }
         $settings = get_option($this->opt_general, array());
@@ -424,11 +422,6 @@ class Kahani_Ultimate_SMS
                                                                       value="<?php echo esc_attr($settings['ding'] ?? ''); ?>">
         </div>
         <input type="submit" name="save_general" class="button button-primary" value="ذخیره تنظیمات">
-        <hr>
-        <h3>فایل لاگ (Debug Log)</h3>
-        <div class="uls-log-box"><?php echo esc_html(@file_get_contents(plugin_dir_path(__FILE__) . 'debug_log.txt')); ?></div>
-        <div style="margin-top:10px;"><label><input type="checkbox" name="clear_log" value="1"> پاکسازی فایل لاگ هنگام
-                ذخیره</label></div>
         <?php
     }
 
@@ -1043,6 +1036,13 @@ class Kahani_Ultimate_SMS
     {
         $log_file = plugin_dir_path(__FILE__) . 'debug_log.txt';
         $this->secure_log_file();
+
+        // Log Rotation: Limit file size to 10MB (10,000,000 bytes)
+        if (file_exists($log_file) && filesize($log_file) > 10000000) {
+            // Overwrite file with empty string + System Message
+            @file_put_contents($log_file, "[SYSTEM] Log file cleared automatically due to size limit." . PHP_EOL);
+        }
+
         $time = date_i18n('Y-m-d H:i:s');
         @file_put_contents($log_file, "[$time] $message" . PHP_EOL, FILE_APPEND);
     }
