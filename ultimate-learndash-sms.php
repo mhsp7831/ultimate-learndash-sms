@@ -79,7 +79,7 @@ class Kahani_Ultimate_SMS
             ?>
             <style>
                 .uls-wrap {
-                    font-family: Vazirmatn;
+                    font-family: Vazirmatn, Tahoma, sans-serif;
                     direction: rtl;
                     background: #fff;
                     padding: 20px;
@@ -139,6 +139,34 @@ class Kahani_Ultimate_SMS
                     border-radius: 4px;
                 }
 
+                /* Password Toggle Styles */
+                .uls-password-wrapper {
+                    position: relative;
+                    display: block;
+                    width: 100%;
+                    max-width: 500px;
+                }
+
+                /* Padding left to prevent text overlapping the icon in RTL */
+                .uls-password-wrapper input {
+                    padding-left: 35px !important;
+                }
+
+                .uls-toggle-pass {
+                    position: absolute;
+                    top: 50%;
+                    left: 10px; /* Position on the left for RTL inputs */
+                    transform: translateY(-50%);
+                    cursor: pointer;
+                    color: #888;
+                    z-index: 10;
+                }
+
+                .uls-toggle-pass:hover {
+                    color: #2271b1;
+                }
+
+                /* Rest of styles... */
                 .uls-card {
                     background: #f9f9f9;
                     border: 1px solid #e5e5e5;
@@ -166,29 +194,6 @@ class Kahani_Ultimate_SMS
                     font-size: 12px;
                 }
 
-                .uls-log-box {
-                    background: #222;
-                    color: #0f0;
-                    padding: 10px;
-                    height: 200px;
-                    overflow-y: scroll;
-                    direction: ltr;
-                    text-align: left;
-                    font-family: monospace;
-                }
-
-                /* استایل شمارنده کاراکتر */
-                .uls-char-count {
-                    font-size: 12px;
-                    color: #777;
-                    margin-top: 5px;
-                    text-align: left;
-                    width: 100%;
-                    max-width: 500px;
-                    font-family: Vazirmatn, Tahoma, sans-serif;
-                }
-
-                /* استایل‌های مربوط به Smart Message */
                 .uls-smart-row {
                     display: none;
                     margin-top: 15px;
@@ -213,6 +218,16 @@ class Kahani_Ultimate_SMS
                 .uls-checkbox-label input {
                     margin-left: 8px;
                 }
+
+                .uls-char-count {
+                    font-size: 12px;
+                    color: #777;
+                    margin-top: 5px;
+                    text-align: left;
+                    width: 100%;
+                    max-width: 500px;
+                    font-family: Vazirmatn, Tahoma, sans-serif;
+                }
             </style>
             <?php
         });
@@ -222,6 +237,20 @@ class Kahani_Ultimate_SMS
             ?>
             <script>
                 jQuery(document).ready(function ($) {
+
+                    // --- Password Show/Hide Toggle ---
+                    $(document).on('click', '.uls-toggle-pass', function () {
+                        var $icon = $(this);
+                        var $input = $icon.siblings('input');
+
+                        if ($input.attr('type') === 'password') {
+                            $input.attr('type', 'text');
+                            $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+                        } else {
+                            $input.attr('type', 'password');
+                            $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+                        }
+                    });
 
                     // --- AJAX for Lessons Dropdown ---
                     $('#uls_selected_course').change(function () {
@@ -245,44 +274,29 @@ class Kahani_Ultimate_SMS
                         });
                     });
 
-                    // --- Real-time Character Counter (Modified) ---
+                    // --- Real-time Character Counter ---
                     function updateCharCount(textarea) {
                         var $el = $(textarea);
                         var count = $el.val().length;
-                        var limit = 67; // حد هر پیامک
-
-                        // ۱. محاسبه تعداد پیامک‌ها
+                        var limit = 67;
                         var pages = Math.ceil(count / limit);
-                        if (pages === 0) pages = 1; // حداقل ۱ پیامک داریم
-
-                        // ۲. محاسبه کاراکترهای باقی‌مانده در صفحه جاری
+                        if (pages === 0) pages = 1;
                         var remaining = limit - (count % limit);
-
-                        // اگر دقیقاً مضرب ۶۷ باشد (مثلاً ۱۳۴)، باقی‌مانده باید ۰ باشد نه ۶۷
                         if (count !== 0 && count % limit === 0) {
                             remaining = 0;
                         }
 
                         var $counter = $el.next('.uls-char-count');
                         if ($counter.length === 0) {
-                            // اضافه کردن استایل transition برای تغییر رنگ نرم
                             $el.after('<div class="uls-char-count" style="transition: color 0.2s ease;"></div>');
                             $counter = $el.next('.uls-char-count');
                         }
 
                         var hue = Math.floor((remaining / limit) * 120);
-                        var color = 'hsl(' + hue + ', 100%, 35%)'; // Saturation 100%, Lightness 35% (برای خوانایی بهتر)
-
-                        // نمایش خروجی با اعمال رنگ فقط روی بخش "باقی‌مانده"
-                        $counter.html(
-                            '<span style="color:' + color + '; font-weight:bold;">' +
-                            remaining + ' کاراکتر باقیمانده' +
-                            '</span>' +
-                            ' | ' + pages + ' پیامک'
-                        );
+                        var color = 'hsl(' + hue + ', 100%, 35%)';
+                        $counter.html('<span style="color:' + color + '; font-weight:bold;">' + remaining + ' کاراکتر باقیمانده' + '</span>' + ' | ' + pages + ' پیامک');
                     }
 
-                    // رویدادها (بدون تغییر)
                     $('.uls-wrap textarea').each(function () {
                         updateCharCount(this);
                     });
@@ -293,18 +307,14 @@ class Kahani_Ultimate_SMS
                     // --- Smart Message Toggle Logic ---
                     $(document).on('change', '.uls-smart-toggle', function () {
                         var isChecked = $(this).is(':checked');
-                        // پیدا کردن نزدیک‌ترین کانتینر (card برای دوره‌ها/درس‌ها یا wrap برای ثبت‌نام)
                         var $container = $(this).closest('.uls-card, .uls-section-wrap');
                         var $smartRow = $container.find('.uls-smart-row');
-
                         if (isChecked) {
                             $smartRow.slideDown();
                         } else {
                             $smartRow.slideUp();
                         }
                     });
-
-                    // بررسی اولیه چک‌باکس‌ها هنگام لود صفحه
                     $('.uls-smart-toggle').each(function () {
                         $(this).trigger('change');
                     });
@@ -405,22 +415,40 @@ class Kahani_Ultimate_SMS
         $settings = get_option($this->opt_general, array());
         ?>
         <h3>اطلاعات پنل پیامک و ربات (Global)</h3>
-        <div class="uls-form-row"><label>نام کاربری پنل پیامک:</label><input type="text" name="username"
-                                                                             value="<?php echo esc_attr($settings['username'] ?? ''); ?>">
+
+        <div class="uls-form-row">
+            <label>نام کاربری پنل پیامک:</label>
+            <input type="text" name="username" value="<?php echo esc_attr($settings['username'] ?? ''); ?>">
         </div>
-        <div class="uls-form-row"><label>رمز عبور پنل پیامک:</label><input type="password" name="password"
-                                                                           value="<?php echo esc_attr($settings['password'] ?? ''); ?>">
+
+        <div class="uls-form-row">
+            <label>رمز عبور پنل پیامک:</label>
+            <div class="uls-password-wrapper">
+                <input type="password" name="password" value="<?php echo esc_attr($settings['password'] ?? ''); ?>">
+                <span class="dashicons dashicons-visibility uls-toggle-pass" title="نمایش/مخفی کردن"></span>
+            </div>
         </div>
-        <div class="uls-form-row"><label>شماره فرستنده پیش‌فرض:</label><input type="text" name="default_from"
-                                                                              value="<?php echo esc_attr($settings['default_from'] ?? ''); ?>">
+
+        <div class="uls-form-row">
+            <label>شماره فرستنده پیش‌فرض:</label>
+            <input type="text" name="default_from" value="<?php echo esc_attr($settings['default_from'] ?? ''); ?>">
         </div>
+
         <hr>
-        <div class="uls-form-row"><label>توکن ربات ایتا:</label><input type="text" name="token"
-                                                                       value="<?php echo esc_attr($settings['token'] ?? ''); ?>">
+
+        <div class="uls-form-row">
+            <label>توکن ربات ایتا:</label>
+            <div class="uls-password-wrapper">
+                <input type="password" name="token" value="<?php echo esc_attr($settings['token'] ?? ''); ?>">
+                <span class="dashicons dashicons-visibility uls-toggle-pass" title="نمایش/مخفی کردن"></span>
+            </div>
         </div>
-        <div class="uls-form-row"><label>شماره خط دینگ:</label><input type="text" name="ding"
-                                                                      value="<?php echo esc_attr($settings['ding'] ?? ''); ?>">
+
+        <div class="uls-form-row">
+            <label>شماره خط دینگ:</label>
+            <input type="text" name="ding" value="<?php echo esc_attr($settings['ding'] ?? ''); ?>">
         </div>
+
         <input type="submit" name="save_general" class="button button-primary" value="ذخیره تنظیمات">
         <?php
     }
@@ -504,11 +532,13 @@ class Kahani_Ultimate_SMS
 
             <div class="uls-form-row">
                 <label>
-                    <input type="checkbox" name="reg_block_app_users" value="1" <?php checked(1, $reg['block_app_users'] ?? 0); ?>>
+                    <input type="checkbox" name="reg_block_app_users"
+                           value="1" <?php checked(1, $reg['block_app_users'] ?? 0); ?>>
                     به کاربرانی که از طریق برنامک عضو می‌شوند پیام ارسال نکن
                 </label>
                 <p class="description" style="color: #d63638; margin-top: 5px;">
-                    توجه: برای اطمینان از تشخیص صحیح کاربران اپلیکیشن، پیامک‌های خوش‌آمدگویی با <b>۱ دقیقه تاخیر</b> ارسال می‌شوند.
+                    توجه: برای اطمینان از تشخیص صحیح کاربران اپلیکیشن، پیامک‌های خوش‌آمدگویی با <b>۱ دقیقه تاخیر</b>
+                    ارسال می‌شوند.
                 </p>
             </div>
 
@@ -910,12 +940,12 @@ class Kahani_Ultimate_SMS
         }
 
         // --- Logic: Block App Users (Delayed Check) ---
-        if ( isset($reg_opt['block_app_users']) && $reg_opt['block_app_users'] == 1 ) {
+        if (isset($reg_opt['block_app_users']) && $reg_opt['block_app_users'] == 1) {
             // اکنون 1 دقیقه گذشته و اگر کاربر اپلیکیشن باشد، متای مربوطه ست شده است
-            $is_connected = get_user_meta( $user_id, 'is_eitaa_connected', true );
+            $is_connected = get_user_meta($user_id, 'is_eitaa_connected', true);
 
-            if ( $is_connected ) {
-                $this->log( "Delayed Check: App User detected (ID: $user_id). SMS Blocked." );
+            if ($is_connected) {
+                $this->log("Delayed Check: App User detected (ID: $user_id). SMS Blocked.");
                 return; // خروج: پیامک ارسال نمی‌شود
             }
         }
